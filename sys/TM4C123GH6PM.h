@@ -1536,6 +1536,17 @@ typedef struct {                                    /*!< UDMA Structure         
 #endif
 
 
+
+
+/******************************************************************************
+ * Modification to source.
+ * Made By  : Blake Merritt
+ * On       : 11/01/21
+ * What     :
+ *  Modification duplicates core registers mapping them to RAM when 
+ *  _TEST_ is defined.
+ * 
+ *****************************************************************************/
 #ifndef _TEST_
 
 /* ================================================================================ */
@@ -1800,7 +1811,7 @@ REG_2_RAM UDMA_BASE                       ;
 #define UDMA                            ((UDMA_Type               *) &UDMA_BASE)
 
 
-#endif
+#endif /* End of modification. */
 
 #ifdef __cplusplus
 }
