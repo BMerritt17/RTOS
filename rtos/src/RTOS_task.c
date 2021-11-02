@@ -17,9 +17,18 @@
 #include "RTOS_task.h"
 
 /******************************************************************************
+ * VARIABLES
+ *****************************************************************************/
+uint8_t RTOS_taskNum;                     /* Number of task started.         */
+RTOSThread *RTOS_tasks[MAX_TASKS];        /* Array of task started so far.   */
+uint8_t RTOS_taskCurrInx;                 /* Current task index.             */
+/* Pointers to current task and next task to run.                            */
+RTOSThread * volatile RTOS_taskCurr;
+RTOSThread * volatile RTOS_taskNext;
+
+/******************************************************************************
  * STATIC FUNCTIONS
  *****************************************************************************/
-
 
 /******************************************************************************
  * GLOBAL FUNCTIONS
@@ -31,18 +40,16 @@ int RTOS_create_task(
     uint32_t stkSize) {              /* Size of task stack.     */
 
 
-    if (stkSize < 15) {
+    if (((RTOS_taskNum + 1) > (MAX_TASKS)) || (stkSize < 15)) {
 
         return TASK_CREATE_FAIL;
-    
     }
-    
-
 
 #ifndef _TEST_
 
 #define GROWTH_DIR_1 --
 #define GROWTH_DIR_2
+#define REMAIN_FILL 0u
 
     /* Round down the stack top to the 8-byte boundary. NOTE: ARM Cortex-M.. */
     /* ..grows down from hi to low memory.                                   */
@@ -55,12 +62,16 @@ int RTOS_create_task(
     /* Setup for testing on host machine                                     */
 #define GROWTH_DIR_1
 #define GROWTH_DIR_2 ++ 
+#define REMAIN_FILL 0xDEADBEEFu
 
     uint32_t *sp = stkSto;
     uint32_t *stk_limit = sp + stkSize;
 
 #endif
 
+    /* On target, stack grows down, from high to low.. */
+    /* .. on host, stack grows up from low to high. .. */
+    /* .. The following GROWTH macros reflect this.    */
     *(GROWTH_DIR_1 sp GROWTH_DIR_2) = (1U << 24);              /* xPSR */
     *(GROWTH_DIR_1 sp GROWTH_DIR_2) = (uint32_t)threadHandler; /* PC   */
     *(GROWTH_DIR_1 sp GROWTH_DIR_2) = 0x0000000Eu;             /* LR   */
@@ -76,18 +87,25 @@ int RTOS_create_task(
     *(GROWTH_DIR_1 sp GROWTH_DIR_2) = 0x00000007u;             /* R7   */
     *(GROWTH_DIR_1 sp GROWTH_DIR_2) = 0x00000006u;             /* R6   */
     *(GROWTH_DIR_1 sp GROWTH_DIR_2) = 0x00000005u;             /* R5   */
-    *(GROWTH_DIR_1 sp GROWTH_DIR_2) = 0x00000004u;             /* R4   */
+    *(GROWTH_DIR_1 sp )             = 0x00000004u;             /* R4   */
 
+    /* Save the top of the stack in the thread's attribute. */
+    me->sp = sp; 
 
-    /* Finish stack initialization with 0. */
-    uint32_t *sp_finish = sp; 
+    /* Finish stack initialization with 0.                  */
+    uint32_t *sp_finish =  sp; 
+    *(GROWTH_DIR_1 sp_finish GROWTH_DIR_2);
 
     while(sp_finish != stk_limit) {
 
+        *(sp_finish) = REMAIN_FILL;
         GROWTH_DIR_1 sp_finish GROWTH_DIR_2;
-        *(sp_finish) = 0x00000000U;
-    
+
     }
+    
+    /* Register task with the OS. */
+    RTOS_tasks[RTOS_taskNum] = me;
+    ++RTOS_taskNum;
 
     return TASK_CREATE_OK;
 
