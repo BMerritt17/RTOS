@@ -25,6 +25,8 @@
  *****************************************************************************/
 #define TASK_CREATE_OK   (0)
 #define TASK_CREATE_FAIL (1)
+#define MAX_TASKS 32
+
 
 /******************************************************************************
  * STRUCTS
@@ -34,11 +36,12 @@ typedef struct { /* Thread Control Block (TCB). */
 
 } RTOSThread;
 
+typedef void (*RTOSThreadHandler)();
+
+
 /******************************************************************************
  * FUNCTION PROTOTYPES
  *****************************************************************************/
-typedef void (*RTOSThreadHandler)();
-
 int RTOS_create_task(RTOSThread *me, RTOSThreadHandler threadHandler,
     void *stkSto, uint32_t stkSize);
 
